@@ -34,7 +34,7 @@ const DEFAULTS: Config = {
 	stockDepth: 100,
 	stockHeight: 20,
 	toolDiameter: 8,
-	cellSize: 1,
+	cellSize: 0.5,
 };
 
 interface Result {
