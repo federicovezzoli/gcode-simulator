@@ -1,0 +1,84 @@
+/**
+ * A simple pocket-milling program that cuts a rectangular pocket
+ * with a zig-zag raster strategy.
+ *
+ * Stock: 100 × 100 × 20 mm
+ * Tool:  8 mm flat-end mill
+ * Pocket: 20–80 mm in X, 20–80 mm in Y, 5 mm deep
+ */
+export const SAMPLE_GCODE = `; Simple rectangular pocket — 60×60 mm, 5 mm deep
+G90              ; absolute mode
+G0 Z5            ; safe height
+
+; --- Pass 1 (Z = -2) ---
+G0 X20 Y20
+G1 Z-2 F300
+G1 X80 Y20 F600
+G1 X80 Y24
+G1 X20 Y24
+G1 X20 Y28
+G1 X80 Y28
+G1 X80 Y32
+G1 X20 Y32
+G1 X20 Y36
+G1 X80 Y36
+G1 X80 Y40
+G1 X20 Y40
+G1 X20 Y44
+G1 X80 Y44
+G1 X80 Y48
+G1 X20 Y48
+G1 X20 Y52
+G1 X80 Y52
+G1 X80 Y56
+G1 X20 Y56
+G1 X20 Y60
+G1 X80 Y60
+G1 X80 Y64
+G1 X20 Y64
+G1 X20 Y68
+G1 X80 Y68
+G1 X80 Y72
+G1 X20 Y72
+G1 X20 Y76
+G1 X80 Y76
+G1 X80 Y80
+G1 X20 Y80
+G0 Z5
+
+; --- Pass 2 (Z = -5) ---
+G0 X20 Y20
+G1 Z-5 F300
+G1 X80 Y20 F600
+G1 X80 Y24
+G1 X20 Y24
+G1 X20 Y28
+G1 X80 Y28
+G1 X80 Y32
+G1 X20 Y32
+G1 X20 Y36
+G1 X80 Y36
+G1 X80 Y40
+G1 X20 Y40
+G1 X20 Y44
+G1 X80 Y44
+G1 X80 Y48
+G1 X20 Y48
+G1 X20 Y52
+G1 X80 Y52
+G1 X80 Y56
+G1 X20 Y56
+G1 X20 Y60
+G1 X80 Y60
+G1 X80 Y64
+G1 X20 Y64
+G1 X20 Y68
+G1 X80 Y68
+G1 X80 Y72
+G1 X20 Y72
+G1 X20 Y76
+G1 X80 Y76
+G1 X80 Y80
+G1 X20 Y80
+G0 Z5
+`;
