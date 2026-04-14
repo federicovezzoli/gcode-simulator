@@ -26,7 +26,7 @@ function arcToMoves(
 	i: number,
 	j: number,
 	clockwise: boolean,
-	chordTol = 0.1,
+	chordTol = 0.02,
 ): GCodeMove[] {
 	const cx = from.x + i;
 	const cy = from.y + j;

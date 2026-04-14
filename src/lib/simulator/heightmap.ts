@@ -30,7 +30,8 @@ function stampTool(
 	isBallNose: boolean,
 ): number {
 	const r2 = radius * radius;
-	const radiusCells = Math.ceil(radius / cellSize);
+	// +1 cell beyond radius to cover boundary cells.
+	const radiusCells = Math.ceil(radius / cellSize) + 1;
 	const col0 = Math.floor(cx / cellSize);
 	const row0 = Math.floor(cy / cellSize);
 	let updated = 0;
@@ -47,11 +48,37 @@ function stampTool(
 			const wy = (row + 0.5) * cellSize;
 			const dx = wx - cx;
 			const dy = wy - cy;
-			const d2 = dx * dx + dy * dy;
+			const d = Math.sqrt(dx * dx + dy * dy);
 
-			if (d2 > r2) continue;
+			// Fast path: fully inside or outside — no supersampling needed.
+			let coverage: number;
+			if (d <= radius - cellSize) {
+				coverage = 1;
+			} else if (d >= radius + cellSize) {
+				continue;
+			} else {
+				// Boundary cell: supersample a 4×4 grid to compute the true fraction
+				// of the cell area that lies inside the tool circle.
+				// Uses d² comparisons only — no sqrt per subsample.
+				const N = 4;
+				let hits = 0;
+				for (let si = 0; si < N; si++) {
+					for (let sj = 0; sj < N; sj++) {
+						const sx = (col + (si + 0.5) / N) * cellSize - cx;
+						const sy = (row + (sj + 0.5) / N) * cellSize - cy;
+						if (sx * sx + sy * sy <= r2) hits++;
+					}
+				}
+				coverage = hits / (N * N);
+				if (coverage <= 0) continue;
+			}
 
-			const cutZ = isBallNose ? toolZ + radius - Math.sqrt(r2 - d2) : toolZ;
+			const dClamped = Math.min(d, radius);
+			const fullCutZ = isBallNose
+				? toolZ + radius - Math.sqrt(r2 - dClamped * dClamped)
+				: toolZ;
+
+			const cutZ = fullCutZ * coverage;
 
 			const idx = row * cols + col;
 			if (cutZ < data[idx]) {
