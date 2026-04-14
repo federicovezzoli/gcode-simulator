@@ -1,4 +1,9 @@
-import type { GCodeMove, Heightmap, MoveLogEntry, SimulatorConfig } from "./types";
+import type {
+	GCodeMove,
+	Heightmap,
+	MoveLogEntry,
+	SimulatorConfig,
+} from "./types";
 
 /**
  * Stamps the tool footprint at a single position into the heightmap.
@@ -46,9 +51,7 @@ function stampTool(
 
 			if (d2 > r2) continue;
 
-			const cutZ = isBallNose
-				? toolZ + radius - Math.sqrt(r2 - d2)
-				: toolZ;
+			const cutZ = isBallNose ? toolZ + radius - Math.sqrt(r2 - d2) : toolZ;
 
 			const idx = row * cols + col;
 			if (cutZ < data[idx]) {
@@ -140,8 +143,7 @@ export function simulateHeightmap(
 			(move.to.x - move.from.x) ** 2 + (move.to.y - move.from.y) ** 2,
 		);
 		const skipped =
-			move.type === "rapid" ||
-			Math.min(move.from.z, move.to.z) >= stock.height;
+			move.type === "rapid" || Math.min(move.from.z, move.to.z) >= stock.height;
 
 		let samples = 0;
 		let cellsUpdated = 0;
