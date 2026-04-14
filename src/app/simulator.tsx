@@ -17,6 +17,16 @@ interface Config {
 	cellSize: number;
 }
 
+const DEPTH_STOPS: [number, number, number][] = [
+	[15, 23, 42],
+	[30, 64, 175],
+	[3, 105, 161],
+	[8, 145, 178],
+	[16, 185, 129],
+	[234, 179, 8],
+	[228, 228, 231],
+];
+
 const DEFAULTS: Config = {
 	stockWidth: 100,
 	stockDepth: 100,
@@ -26,15 +36,7 @@ const DEFAULTS: Config = {
 };
 
 function depthColor(t: number): string {
-	const stops: [number, number, number][] = [
-		[15, 23, 42],
-		[30, 64, 175],
-		[3, 105, 161],
-		[8, 145, 178],
-		[16, 185, 129],
-		[234, 179, 8],
-		[228, 228, 231],
-	];
+	const stops = DEPTH_STOPS;
 	const scaled = t * (stops.length - 1);
 	const lo = Math.floor(scaled);
 	const hi = Math.min(lo + 1, stops.length - 1);
@@ -112,11 +114,14 @@ export function Simulator() {
 			if (!canvas) return;
 
 			const t2 = performance.now();
+			// Size from the container, not the (stale) canvas intrinsic dimensions
+			const container = canvas.parentElement;
+			const available = container
+				? Math.min(container.clientWidth, container.clientHeight) - 2 // -2 for padding
+				: 600;
 			const pixelsPerCell = Math.max(
 				1,
-				Math.floor(
-					Math.min(canvas.width, canvas.height) / Math.max(hm.cols, hm.rows),
-				),
+				Math.floor(available / Math.max(hm.cols, hm.rows)),
 			);
 			canvas.width = hm.cols * pixelsPerCell;
 			canvas.height = hm.rows * pixelsPerCell;
@@ -274,8 +279,7 @@ export function Simulator() {
 					<div
 						className="h-3 w-32 rounded"
 						style={{
-							background:
-								"linear-gradient(to right, rgb(15,23,42), rgb(30,64,175), rgb(8,145,178), rgb(16,185,129), rgb(234,179,8), rgb(228,228,231))",
+							background: `linear-gradient(to right, ${DEPTH_STOPS.map(([r, g, b]) => `rgb(${r},${g},${b})`).join(", ")})`,
 						}}
 					/>
 					<span>Untouched</span>

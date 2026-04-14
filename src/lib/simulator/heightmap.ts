@@ -115,8 +115,8 @@ function stampPath(
 /**
  * Simulates material removal for a list of G-code moves.
  *
- * Only G1 (linear) moves are simulated — G0 (rapid) moves are assumed to be
- * positioning moves above the stock and are skipped entirely.
+ * G0 (rapid) moves are not stamped — they are skipped for cutting/stamping
+ * but may still be reported to `onMove` with `simulated: false`.
  *
  * @param onMove - optional callback fired after each move is processed,
  *                 useful for logging and progress tracking.
