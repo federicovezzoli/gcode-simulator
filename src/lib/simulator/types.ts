@@ -35,6 +35,21 @@ export interface SimulatorConfig {
 	cellSize: number;
 }
 
+export interface MoveLogEntry {
+	index: number;
+	type: MotionType;
+	from: Vec3;
+	to: Vec3;
+	/** false = skipped (rapid or above stock) */
+	simulated: boolean;
+	/** XY distance of this move in mm */
+	xyLength: number;
+	/** Number of stamp positions sampled along the path */
+	samples: number;
+	/** Number of heightmap cells updated (Z lowered) */
+	cellsUpdated: number;
+}
+
 export interface Heightmap {
 	cols: number; // stock.width  / cellSize
 	rows: number; // stock.depth  / cellSize

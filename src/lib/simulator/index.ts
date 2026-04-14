@@ -4,6 +4,7 @@ export type {
 	GCodeMove,
 	Heightmap,
 	MotionType,
+	MoveLogEntry,
 	SimulatorConfig,
 	StockConfig,
 	ToolConfig,
