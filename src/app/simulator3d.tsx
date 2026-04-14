@@ -85,98 +85,117 @@ export function Simulator3D() {
 
 	return (
 		<div className="flex h-[calc(100vh-65px)] flex-col gap-0 lg:flex-row">
-			<aside className="flex w-full flex-col gap-5 overflow-y-auto border-b border-zinc-800 p-5 lg:w-72 lg:border-b-0 lg:border-r">
-				<section>
-					<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-						Stock (mm)
-					</p>
-					<div className="space-y-3">
-						<NumberField
-							label="Width (X)"
-							value={config.stockWidth}
-							onChange={(v) => setConfigKey("stockWidth", v)}
-						/>
-						<NumberField
-							label="Depth (Y)"
-							value={config.stockDepth}
-							onChange={(v) => setConfigKey("stockDepth", v)}
-						/>
-						<NumberField
-							label="Height (Z)"
-							value={config.stockHeight}
-							onChange={(v) => setConfigKey("stockHeight", v)}
-						/>
-					</div>
-				</section>
-
-				<Separator className="bg-zinc-800" />
-
-				<section>
-					<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-						Tool
-					</p>
-					<SliderField
-						label={`Diameter: ${config.toolDiameter} mm`}
-						value={config.toolDiameter}
-						min={0.5}
-						max={25}
-						step={0.5}
-						onChange={(v) => setConfigKey("toolDiameter", v)}
-					/>
-				</section>
-
-				<Separator className="bg-zinc-800" />
-
-				<section>
-					<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-						Resolution
-					</p>
-					<SliderField
-						label={`Cell size: ${config.cellSize} mm`}
-						value={config.cellSize}
-						min={0.25}
-						max={5}
-						step={0.25}
-						onChange={(v) => setConfigKey("cellSize", v)}
-					/>
-					<p className="mt-2 text-xs text-zinc-600">
-						Grid: {Math.ceil(config.stockWidth / config.cellSize)} ×{" "}
-						{Math.ceil(config.stockDepth / config.cellSize)} cells
-					</p>
-				</section>
-
-				<Separator className="bg-zinc-800" />
-
-				<section className="flex flex-1 flex-col">
-					<div className="mb-2 flex items-center justify-between">
-						<p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-							G-code
+			<aside className="flex w-full flex-col border-b border-zinc-800 lg:w-72 lg:border-b-0 lg:border-r">
+				<div className="flex flex-1 flex-col gap-5 overflow-y-auto p-5">
+					<section>
+						<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+							Stock (mm)
 						</p>
-						<button
-							type="button"
-							onClick={() => setGcode(SAMPLE_GCODE)}
-							className="text-xs text-zinc-500 hover:text-zinc-300"
-						>
-							reset
-						</button>
-					</div>
-					<Textarea
-						value={gcode}
-						onChange={(e) => setGcode(e.target.value)}
-						className="min-h-40 flex-1 resize-none bg-zinc-900 font-mono text-xs text-zinc-300"
-						spellCheck={false}
-					/>
-				</section>
+						<div className="space-y-3">
+							<NumberField
+								label="Width (X)"
+								value={config.stockWidth}
+								onChange={(v) => setConfigKey("stockWidth", v)}
+							/>
+							<NumberField
+								label="Depth (Y)"
+								value={config.stockDepth}
+								onChange={(v) => setConfigKey("stockDepth", v)}
+							/>
+							<NumberField
+								label="Height (Z)"
+								value={config.stockHeight}
+								onChange={(v) => setConfigKey("stockHeight", v)}
+							/>
+						</div>
+					</section>
 
-				<Button onClick={run} className="w-full">
-					Run simulation
-				</Button>
+					<Separator className="bg-zinc-800" />
 
-				{error && (
-					<p className="rounded border border-red-800 bg-red-950 px-3 py-2 text-xs text-red-400">
-						{error}
-					</p>
-				)}
+					<section>
+						<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+							Tool
+						</p>
+						<SliderField
+							label={`Diameter: ${config.toolDiameter} mm`}
+							value={config.toolDiameter}
+							min={0.5}
+							max={25}
+							step={0.5}
+							onChange={(v) => setConfigKey("toolDiameter", v)}
+						/>
+					</section>
+
+					<Separator className="bg-zinc-800" />
+
+					<section>
+						<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+							Resolution
+						</p>
+						<SliderField
+							label={`Cell size: ${config.cellSize} mm`}
+							value={config.cellSize}
+							min={0.25}
+							max={5}
+							step={0.25}
+							onChange={(v) => setConfigKey("cellSize", v)}
+						/>
+						<p className="mt-2 text-xs text-zinc-600">
+							Grid: {Math.ceil(config.stockWidth / config.cellSize)} ×{" "}
+							{Math.ceil(config.stockDepth / config.cellSize)} cells
+						</p>
+					</section>
+
+					<Separator className="bg-zinc-800" />
+
+					<section>
+						<div className="mb-2 flex items-center justify-between">
+							<p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+								G-code
+							</p>
+							<div className="flex items-center gap-3">
+								<label className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300">
+									open file
+									<input
+										type="file"
+										accept=".nc,.gcode,.ngc,.tap,.txt"
+										className="sr-only"
+										onChange={(e) => {
+											const file = e.target.files?.[0];
+											if (!file) return;
+											file.text().then(setGcode);
+											e.target.value = "";
+										}}
+									/>
+								</label>
+								<button
+									type="button"
+									onClick={() => setGcode(SAMPLE_GCODE)}
+									className="text-xs text-zinc-500 hover:text-zinc-300"
+								>
+									reset
+								</button>
+							</div>
+						</div>
+						<Textarea
+							value={gcode}
+							onChange={(e) => setGcode(e.target.value)}
+							className="max-h-64 min-h-40 resize-none bg-zinc-900 font-mono text-xs text-zinc-300"
+							spellCheck={false}
+						/>
+					</section>
+				</div>
+
+				<div className="flex flex-col gap-3 border-t border-zinc-800 p-5">
+					<Button onClick={run} className="w-full">
+						Run simulation
+					</Button>
+					{error && (
+						<p className="rounded border border-red-800 bg-red-950 px-3 py-2 text-xs text-red-400">
+							{error}
+						</p>
+					)}
+				</div>
 			</aside>
 
 			<div className="relative flex-1">
