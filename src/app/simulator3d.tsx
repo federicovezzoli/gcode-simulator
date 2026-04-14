@@ -3,14 +3,20 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { SAMPLE_GCODE } from "@/lib/sample-gcode";
-import { parseGCode, simulateHeightmap } from "@/lib/simulator";
+import type { GCodeSection, ToolConfig } from "@/lib/simulator";
+import {
+	parseGCode,
+	simulateHeightmap,
+	splitGCodeSections,
+} from "@/lib/simulator";
 import type { Heightmap } from "@/lib/simulator/types";
+import { NumberField } from "./number-field";
 import type { SceneConfig } from "./scene";
+import { SliderField } from "./slider-field";
+import { ToolSection } from "./tool-section";
 
 const Scene = dynamic(() => import("./scene").then((m) => m.Scene), {
 	ssr: false,
@@ -25,7 +31,6 @@ interface Config {
 	stockWidth: number;
 	stockDepth: number;
 	stockHeight: number;
-	toolDiameter: number;
 	cellSize: number;
 }
 
@@ -33,9 +38,15 @@ const DEFAULTS: Config = {
 	stockWidth: 100,
 	stockDepth: 100,
 	stockHeight: 20,
-	toolDiameter: 8,
-	cellSize: 0.5,
+	cellSize: 0.25,
 };
+
+const DEFAULT_TOOL: ToolConfig = { diameter: 6, type: "flat" };
+
+interface SectionTool {
+	section: GCodeSection;
+	tool: ToolConfig;
+}
 
 interface Result {
 	heightmap: Heightmap;
@@ -45,24 +56,52 @@ interface Result {
 export function Simulator3D() {
 	const [gcode, setGcode] = useState(SAMPLE_GCODE);
 	const [config, setConfig] = useState<Config>(DEFAULTS);
+	const [sectionTools, setSectionTools] = useState<SectionTool[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<Result | null>(null);
+
+	// Re-detect sections whenever G-code changes, preserving existing tool configs.
+	useEffect(() => {
+		const sections = splitGCodeSections(gcode);
+		setSectionTools((prev) =>
+			sections.map((section, i) => ({
+				section,
+				tool: prev[i]?.tool ?? DEFAULT_TOOL,
+			})),
+		);
+	}, [gcode]);
 
 	const run = useCallback(() => {
 		setError(null);
 		try {
-			const moves = parseGCode(gcode);
-			const heightmap = simulateHeightmap(moves, {
-				stock: {
-					width: config.stockWidth,
-					depth: config.stockDepth,
-					height: config.stockHeight,
-				},
-				tool: { diameter: config.toolDiameter, type: "flat" },
-				cellSize: config.cellSize,
-			});
+			const cols = Math.ceil(config.stockWidth / config.cellSize);
+			const rows = Math.ceil(config.stockDepth / config.cellSize);
+			const sharedData = new Float32Array(cols * rows);
+
+			let lastHeightmap: Heightmap | null = null;
+
+			for (const { section, tool } of sectionTools) {
+				const moves = parseGCode(section.source);
+				lastHeightmap = simulateHeightmap(
+					moves,
+					{
+						stock: {
+							width: config.stockWidth,
+							depth: config.stockDepth,
+							height: config.stockHeight,
+						},
+						tool,
+						cellSize: config.cellSize,
+					},
+					undefined,
+					sharedData,
+				);
+			}
+
+			if (!lastHeightmap) return;
+
 			setResult({
-				heightmap,
+				heightmap: lastHeightmap,
 				config: {
 					stockWidth: config.stockWidth,
 					stockDepth: config.stockDepth,
@@ -72,7 +111,7 @@ export function Simulator3D() {
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Unknown error");
 		}
-	}, [gcode, config]);
+	}, [config, sectionTools]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally runs only on mount
 	useEffect(() => {
@@ -81,6 +120,12 @@ export function Simulator3D() {
 
 	function setConfigKey<K extends keyof Config>(key: K, value: Config[K]) {
 		setConfig((prev) => ({ ...prev, [key]: value }));
+	}
+
+	function setSectionTool(i: number, tool: ToolConfig) {
+		setSectionTools((prev) =>
+			prev.map((st, idx) => (idx === i ? { ...st, tool } : st)),
+		);
 	}
 
 	return (
@@ -114,16 +159,18 @@ export function Simulator3D() {
 
 					<section>
 						<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-							Tool
+							Tools
 						</p>
-						<SliderField
-							label={`Diameter: ${config.toolDiameter} mm`}
-							value={config.toolDiameter}
-							min={0.5}
-							max={25}
-							step={0.5}
-							onChange={(v) => setConfigKey("toolDiameter", v)}
-						/>
+						<div className="space-y-4">
+							{sectionTools.map((st, i) => (
+								<ToolSection
+									key={st.section.label}
+									label={st.section.label}
+									tool={st.tool}
+									onChange={(tool) => setSectionTool(i, tool)}
+								/>
+							))}
+						</div>
 					</section>
 
 					<Separator className="bg-zinc-800" />
@@ -210,61 +257,6 @@ export function Simulator3D() {
 					}
 				/>
 			</div>
-		</div>
-	);
-}
-
-function NumberField({
-	label,
-	value,
-	onChange,
-}: {
-	label: string;
-	value: number;
-	onChange: (v: number) => void;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-3">
-			<Label className="text-xs text-zinc-400">{label}</Label>
-			<input
-				type="number"
-				value={value}
-				onChange={(e) => {
-					const v = Number(e.target.value);
-					if (Number.isFinite(v) && v > 0) onChange(v);
-				}}
-				className="w-20 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-right text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-			/>
-		</div>
-	);
-}
-
-function SliderField({
-	label,
-	value,
-	min,
-	max,
-	step,
-	onChange,
-}: {
-	label: string;
-	value: number;
-	min: number;
-	max: number;
-	step: number;
-	onChange: (v: number) => void;
-}) {
-	return (
-		<div className="space-y-1.5">
-			<Label className="text-xs text-zinc-400">{label}</Label>
-			<Slider
-				min={min}
-				max={max}
-				step={step}
-				value={[value]}
-				onValueChange={(vals) => onChange(Array.isArray(vals) ? vals[0] : vals)}
-				className="w-full"
-			/>
 		</div>
 	);
 }

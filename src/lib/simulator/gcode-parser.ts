@@ -1,5 +1,12 @@
 import type { GCodeMove, Vec3 } from "./types";
 
+export interface GCodeSection {
+	/** Human-readable label extracted from the MSG comment, or a fallback */
+	label: string;
+	/** Raw G-code lines belonging to this section */
+	source: string;
+}
+
 interface ParseState {
 	x: number;
 	y: number;
@@ -26,7 +33,7 @@ function arcToMoves(
 	i: number,
 	j: number,
 	clockwise: boolean,
-	chordTol = 0.1,
+	chordTol = 0.02,
 ): GCodeMove[] {
 	const cx = from.x + i;
 	const cy = from.y + j;
@@ -171,4 +178,54 @@ export function parseGCode(source: string): GCodeMove[] {
 	}
 
 	return moves;
+}
+
+/**
+ * Splits G-code source into sections at tool-change boundaries.
+ *
+ * A tool change is signalled by an `M0` command whose line contains a
+ * parenthesised MSG comment with "change tool" (case-insensitive), which is
+ * the convention used by most CAM post-processors (e.g. Estlcam, Fusion 360).
+ *
+ * If no tool-change lines are found the whole source is returned as one section
+ * labelled "Tool 1".
+ *
+ * Section labels are taken from the first `(No. N ...)` or `(MSG ...)` comment
+ * in the section; otherwise a sequential fallback is used.
+ */
+export function splitGCodeSections(source: string): GCodeSection[] {
+	const lines = source.split("\n");
+
+	const breakpoints: number[] = [];
+	for (let i = 0; i < lines.length; i++) {
+		if (
+			/\bM0\b/.test(lines[i].toUpperCase()) &&
+			/MSG.*CHANGE\s*TOOL/i.test(lines[i])
+		) {
+			breakpoints.push(i);
+		}
+	}
+
+	if (breakpoints.length === 0) {
+		return [{ label: "Tool 1", source }];
+	}
+
+	// Build slice ranges: [0, bp0), [bp0, bp1), [bp1, bp2), ...
+	const starts = [0, ...breakpoints];
+	const ends = [...breakpoints, lines.length];
+
+	return starts.map((start, idx) => {
+		const sectionLines = lines.slice(start, ends[idx]);
+
+		let label = `Tool ${idx + 1}`;
+		for (const l of sectionLines) {
+			const m = l.match(/\(No\.\s*\d+[^)]*\)/i) ?? l.match(/\(MSG[^)]*\)/i);
+			if (m) {
+				label = m[0].replace(/^\(|\)$/g, "").trim();
+				break;
+			}
+		}
+
+		return { label, source: sectionLines.join("\n") };
+	});
 }

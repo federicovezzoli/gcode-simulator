@@ -6,6 +6,61 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import type { Heightmap } from "@/lib/simulator/types";
 
+// ── GLSL shaders ─────────────────────────────────────────────────────────────
+
+const vertexShader = /* glsl */ `
+  // Heightmap: R channel = surface Z in mm (≤ 0).
+  uniform sampler2D uHeightmap;
+
+  // Passed to the fragment shader for depth colouring and normal estimation.
+  varying vec2  vUv;
+  varying float vZ;
+
+  void main() {
+    vUv = uv;
+
+    // Sample Z from the heightmap and displace this vertex along Z.
+    // The PlaneGeometry has one vertex per heightmap cell, so each sample
+    // lands exactly on a texel centre — no interpolation artefacts.
+    float z = texture2D(uHeightmap, uv).r;
+    vZ = z;
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position.x, position.y, z, 1.0);
+  }
+`;
+
+const fragmentShader = /* glsl */ `
+  precision highp float;
+
+  uniform sampler2D uHeightmap;
+  // One texel in UV space: vec2(1.0/cols, 1.0/rows).
+  uniform vec2  uTexelSize;
+  // Physical size of one texel in mm (= cellSize).
+  uniform float uCellSize;
+
+  varying vec2  vUv;
+  varying float vZ;
+
+  void main() {
+    // ── Surface normal via finite differences ─────────────────────────────
+    float zR = texture2D(uHeightmap, vUv + vec2(uTexelSize.x, 0.0)).r;
+    float zU = texture2D(uHeightmap, vUv + vec2(0.0, uTexelSize.y)).r;
+    vec3 tangentX = normalize(vec3(uCellSize, 0.0,      zR - vZ));
+    vec3 tangentY = normalize(vec3(0.0,      uCellSize, zU - vZ));
+    vec3 normal   = normalize(cross(tangentX, tangentY));
+
+    // ── Ambient + diffuse lighting ────────────────────────────────────────
+    vec3  baseColor = vec3(228.0, 228.0, 231.0) / 255.0; // zinc-200
+    vec3  lightDir  = normalize(vec3(1.0, 1.0, 2.0));
+    float diffuse   = max(dot(normal, lightDir), 0.0);
+    float light     = 0.4 + 0.6 * diffuse;
+
+    gl_FragColor = vec4(baseColor * light, 1.0);
+  }
+`;
+
+// ── Components ────────────────────────────────────────────────────────────────
+
 export interface SceneConfig {
 	stockWidth: number;
 	stockDepth: number;
@@ -19,56 +74,54 @@ function HeightmapMesh({
 	heightmap: Heightmap;
 	config: SceneConfig;
 }) {
-	const geo = useMemo(() => {
-		const { cols, rows, data } = heightmap;
-		const { stockWidth, stockDepth } = config;
+	const { stockWidth, stockDepth } = config;
 
-		const vertexCount = cols * rows;
-		const positions = new Float32Array(vertexCount * 3);
+	// Upload the heightmap once as a single-channel float texture.
+	// The vertex shader displaces each vertex by sampling this texture —
+	// zero CPU work per frame after upload.
+	const texture = useMemo(() => {
+		const tex = new THREE.DataTexture(
+			heightmap.data,
+			heightmap.cols,
+			heightmap.rows,
+			THREE.RedFormat,
+			THREE.FloatType,
+		);
+		tex.minFilter = THREE.LinearFilter;
+		tex.magFilter = THREE.LinearFilter;
+		tex.needsUpdate = true;
+		return tex;
+	}, [heightmap]);
 
-		for (let row = 0; row < rows; row++) {
-			for (let col = 0; col < cols; col++) {
-				const i = row * cols + col;
-				positions[i * 3 + 0] = (col / (cols - 1)) * stockWidth - stockWidth / 2;
-				positions[i * 3 + 1] = (row / (rows - 1)) * stockDepth - stockDepth / 2;
-				positions[i * 3 + 2] = data[i];
-			}
-		}
+	const material = useMemo(
+		() =>
+			new THREE.ShaderMaterial({
+				vertexShader,
+				fragmentShader,
+				uniforms: {
+					uHeightmap: { value: texture },
+					uTexelSize: {
+						value: new THREE.Vector2(1 / heightmap.cols, 1 / heightmap.rows),
+					},
+					uCellSize: { value: heightmap.cellSize },
+				},
+				side: THREE.DoubleSide,
+			}),
+		[texture, heightmap],
+	);
 
-		const triCount = (cols - 1) * (rows - 1) * 6;
-		const indices = new Uint32Array(triCount);
-		let idx = 0;
-		for (let row = 0; row < rows - 1; row++) {
-			for (let col = 0; col < cols - 1; col++) {
-				const tl = row * cols + col;
-				const tr = row * cols + col + 1;
-				const bl = (row + 1) * cols + col;
-				const br = (row + 1) * cols + col + 1;
-				indices[idx++] = tl;
-				indices[idx++] = bl;
-				indices[idx++] = tr;
-				indices[idx++] = tr;
-				indices[idx++] = bl;
-				indices[idx++] = br;
-			}
-		}
-
-		const g = new THREE.BufferGeometry();
-		g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-		g.setIndex(new THREE.BufferAttribute(indices, 1));
-		g.computeVertexNormals();
-		return g;
-	}, [heightmap, config]);
-
+	// One vertex per heightmap cell — each UV lands exactly on a texel centre.
 	return (
-		<mesh geometry={geo}>
-			<meshStandardMaterial color="#e4e4e7" side={THREE.DoubleSide} />
+		<mesh material={material}>
+			<planeGeometry
+				args={[stockWidth, stockDepth, heightmap.cols - 1, heightmap.rows - 1]}
+			/>
 		</mesh>
 	);
 }
 
-// BoxGeometry face group order: 0=+x, 1=-x, 2=+y, 3=-y, 4=+z (stock top), 5=-z (stock bottom)
-// Face 4 (+Z) is the top surface of the stock — remove it so the pocket below is visible.
+// BoxGeometry face group order: 0=+x, 1=-x, 2=+y, 3=-y, 4=+z (stock top), 5=-z (stock bottom).
+// Face 4 (+Z) is removed — the displaced heightmap surface sits there instead.
 function StockBox({ config }: { config: SceneConfig }) {
 	const { stockWidth, stockDepth, stockHeight } = config;
 	return (
@@ -88,6 +141,9 @@ function StockBox({ config }: { config: SceneConfig }) {
 						key={i}
 						attach={`material-${i}`}
 						color="#e4e4e7"
+						polygonOffset
+						polygonOffsetFactor={2}
+						polygonOffsetUnits={2}
 					/>
 				),
 			)}
