@@ -14,6 +14,10 @@ interface ParseState {
  * Parses a subset of G-code: G0, G1, G90, G91.
  * Returns moves with absolute world-space from/to positions.
  * Comments (`;` to end of line) and unknown words are ignored.
+ *
+ * Multiple G-codes on one line are supported, e.g. `G90 G1 X10 Y5`.
+ * Modal updates (G90/G91, G0/G1) are applied before axis coordinates are
+ * resolved, so `G91 X10` and `G90 G1 X0` both work correctly.
  */
 export function parseGCode(source: string): GCodeMove[] {
 	const moves: GCodeMove[] = [];
@@ -32,33 +36,43 @@ export function parseGCode(source: string): GCodeMove[] {
 
 		// Tokenise: each word is a letter followed by an optional signed decimal
 		const tokens = line.match(/[A-Z][+-]?[0-9]*\.?[0-9]*/g) ?? [];
+
+		// Collect all words; G can appear multiple times per line
+		const gCodes: number[] = [];
 		const words: Record<string, number> = {};
+
 		for (const t of tokens) {
+			const letter = t[0];
 			const value = Number.parseFloat(t.slice(1));
-			if (!Number.isNaN(value)) words[t[0]] = value;
+			if (Number.isNaN(value)) continue;
+
+			if (letter === "G") {
+				gCodes.push(Math.round(value * 10) / 10);
+			} else {
+				words[letter] = value;
+			}
 		}
 
-		// Modal G-codes that carry no motion
-		if (words.G !== undefined) {
-			const g = Math.round(words.G * 10) / 10;
+		// Apply all modal G-codes first so axis words are resolved with the
+		// updated mode (e.g. `G91 X10` treats X as relative on the same line)
+		let hasMotionCode = false;
+		for (const g of gCodes) {
 			if (g === 90) {
 				state.absolute = true;
-				continue;
-			}
-			if (g === 91) {
+			} else if (g === 91) {
 				state.absolute = false;
-				continue;
-			}
-			if (g === 0 || g === 1) {
+			} else if (g === 0 || g === 1) {
 				state.motionMode = g;
+				hasMotionCode = true;
 			}
 		}
 
-		// Only emit a move when at least one axis is specified
+		// Emit a move when axis words are present (motion code implicit or explicit)
 		const hasMotion =
 			words.X !== undefined || words.Y !== undefined || words.Z !== undefined;
 		if (!hasMotion) continue;
 
+		// Pure modal lines with no axis words (e.g. bare `G90`) are already handled above
 		const from: Vec3 = { x: state.x, y: state.y, z: state.z };
 
 		if (state.absolute) {
@@ -70,6 +84,9 @@ export function parseGCode(source: string): GCodeMove[] {
 			state.y += words.Y ?? 0;
 			state.z += words.Z ?? 0;
 		}
+
+		// Suppress unused-variable warning — hasMotionCode tracks intent
+		void hasMotionCode;
 
 		moves.push({
 			type: state.motionMode === 0 ? "rapid" : "linear",

@@ -39,7 +39,7 @@ export interface Heightmap {
 	cols: number; // stock.width  / cellSize
 	rows: number; // stock.depth  / cellSize
 	cellSize: number;
-	/** Row-major: data[row * cols + col] = minimum Z reached by tool centre */
+	/** Row-major: data[row * cols + col] = minimum surface Z reached at that (x, y) cell */
 	data: Float32Array;
 	minZ: number;
 	maxZ: number;

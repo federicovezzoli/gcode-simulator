@@ -1,13 +1,16 @@
 import type { GCodeMove, Heightmap, SimulatorConfig } from "./types";
 
 /**
- * Stamps the tool footprint at a single (cx, cy, toolZ) position into the heightmap.
+ * Stamps the tool footprint at a single position into the heightmap.
  *
- * Flat-end mill:   uniform disc   — all cells within radius get toolZ
- * Ball-nose mill:  paraboloid     — cell at distance d gets toolZ + r - sqrt(r²-d²)
- *                  (centre of ball sits at toolZ + r above the flat cutting plane)
+ * @param toolZ - Z of the tool tip (lowest point) for both flat and ball-nose.
  *
- * Complexity per stamp: O((r/cellSize)²)
+ * Flat-end mill:  all cells within radius get `toolZ` (uniform disc).
+ * Ball-nose mill: spherical-cap profile — a cell at XY distance d from centre
+ *                 is cut to `toolZ + r - sqrt(r² - d²)`, which equals `toolZ`
+ *                 at the centre and rises toward the rim.
+ *
+ * Complexity per stamp: O((radius/cellSize)²)
  */
 function stampTool(
 	data: Float32Array,
@@ -16,16 +19,16 @@ function stampTool(
 	cellSize: number,
 	cx: number, // world X of tool centre
 	cy: number, // world Y of tool centre
-	toolZ: number, // Z of the tool tip (flat) or ball centre bottom
+	toolZ: number, // Z of the tool tip
 	radius: number,
 	isBallNose: boolean,
 ): void {
 	const r2 = radius * radius;
 	const radiusCells = Math.ceil(radius / cellSize);
 
-	// Grid cell that contains the tool centre
-	const col0 = Math.round(cx / cellSize);
-	const row0 = Math.round(cy / cellSize);
+	// Grid cell that contains the tool centre (floor so origin aligns with cell 0)
+	const col0 = Math.floor(cx / cellSize);
+	const row0 = Math.floor(cy / cellSize);
 
 	for (let dr = -radiusCells; dr <= radiusCells; dr++) {
 		const row = row0 + dr;
@@ -36,8 +39,8 @@ function stampTool(
 			if (col < 0 || col >= cols) continue;
 
 			// World position of cell centre
-			const wx = col * cellSize;
-			const wy = row * cellSize;
+			const wx = (col + 0.5) * cellSize;
+			const wy = (row + 0.5) * cellSize;
 			const dx = wx - cx;
 			const dy = wy - cy;
 			const d2 = dx * dx + dy * dy;
@@ -46,10 +49,8 @@ function stampTool(
 
 			let cutZ: number;
 			if (isBallNose) {
-				// Paraboloid approximation: raise cut depth toward the edges
+				// Spherical-cap profile: surface rises toward the edge of the tool
 				cutZ = toolZ + radius - Math.sqrt(r2 - d2);
-				// Clamp: ball cannot cut below its tip
-				cutZ = Math.max(toolZ, cutZ);
 			} else {
 				cutZ = toolZ;
 			}
@@ -62,7 +63,9 @@ function stampTool(
 
 /**
  * Walks a linear path from (x0,y0,z0) to (x1,y1,z1) in steps of ≤ cellSize/2,
- * stamping the tool at each sample point.
+ * stamping the tool at each sample point so no cell is skipped.
+ *
+ * Complexity: O(pathLength / cellSize × (radius/cellSize)²)
  */
 function stampPath(
 	data: Float32Array,
@@ -83,7 +86,6 @@ function stampPath(
 	const dz = z1 - z0;
 	const xyDist = Math.sqrt(dx * dx + dy * dy);
 
-	// Sample at half a cell width so no cell is skipped
 	const stepSize = cellSize * 0.5;
 	const steps = Math.max(1, Math.ceil(xyDist / stepSize));
 
@@ -106,8 +108,11 @@ function stampPath(
 /**
  * Simulates material removal for a list of G-code moves.
  *
- * Total complexity: O(moves × (radius/cellSize)²)
- * Doubling resolution (halving cellSize) ≈ ×8 the work.
+ * Only G1 (linear) moves are simulated — G0 (rapid) moves are assumed to be
+ * positioning moves above the stock and are skipped entirely.
+ *
+ * Actual complexity: O(Σ pathLength_i / cellSize × (radius/cellSize)²)
+ * Halving cellSize ≈ ×8 the work (×2 from path sampling, ×4 from stamp area).
  */
 export function simulateHeightmap(
 	moves: GCodeMove[],
@@ -123,10 +128,10 @@ export function simulateHeightmap(
 	const data = new Float32Array(cols * rows).fill(stock.height);
 
 	for (const move of moves) {
-		// Rapid moves (G0) don't cut — skip if the tool is above the stock
+		// Rapid moves (G0) are not simulated as cutting passes
 		if (move.type === "rapid") continue;
 
-		// Only simulate when the tool is actually engaging the material
+		// Skip if the move never descends into the stock
 		const minZ = Math.min(move.from.z, move.to.z);
 		if (minZ >= stock.height) continue;
 
