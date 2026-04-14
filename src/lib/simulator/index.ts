@@ -3,6 +3,7 @@ export { simulateHeightmap } from "./heightmap";
 export type {
 	GCodeMove,
 	Heightmap,
+	MoveLogEntry,
 	MotionType,
 	SimulatorConfig,
 	StockConfig,
