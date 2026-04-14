@@ -137,7 +137,7 @@ export function simulateHeightmap(
 
 	// Z=0 is the top surface of the stock (G-code convention).
 	// Cells are initialised to 0; cuts drive them negative.
-	const data = new Float32Array(cols * rows).fill(0);
+	const data = new Float32Array(cols * rows);
 
 	for (let i = 0; i < moves.length; i++) {
 		const move = moves[i];

@@ -129,9 +129,8 @@ export function Simulator() {
 			);
 			const tileHalfW = Math.max(1, Math.round(pxPerMm * hm.cellSize));
 			const tileHalfH = Math.max(1, Math.round(tileHalfW / 2));
-			const pixPerMm = tileHalfW;
-
-			const maxColPx = config.stockHeight * pixPerMm;
+			// Column heights use the true mm→px scale, not the per-cell tile size.
+			const maxColPx = config.stockHeight * pxPerMm;
 			canvas.width = (hm.cols + hm.rows) * tileHalfW;
 			canvas.height =
 				(hm.cols + hm.rows) * tileHalfH + maxColPx + tileHalfH * 2;
@@ -163,7 +162,7 @@ export function Simulator() {
 					const cy = originY + (col + row) * tileHalfH;
 
 					// Column height: remaining material from stock bottom to surface
-					const h = Math.max(0, z + config.stockHeight) * pixPerMm;
+					const h = Math.max(0, z + config.stockHeight) * pxPerMm;
 
 					// Diamond corners at floor level
 					const Tx = cx;
