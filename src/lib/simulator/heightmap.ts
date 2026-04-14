@@ -145,8 +145,11 @@ function stampPath(
  * G0 (rapid) moves are not stamped — they are skipped for cutting/stamping
  * but may still be reported to `onMove` with `simulated: false`.
  *
- * @param onMove - optional callback fired after each move is processed,
- *                 useful for logging and progress tracking.
+ * @param onMove      - optional callback fired after each move is processed,
+ *                      useful for logging and progress tracking.
+ * @param existingData - when provided, simulation writes into this buffer
+ *                       instead of allocating a fresh one; allows multiple
+ *                       tool-change sections to accumulate onto the same grid.
  *
  * Actual complexity: O(Σ pathLength_i / cellSize × (radius/cellSize)²)
  * Halving cellSize ≈ ×8 the work (×2 from path sampling, ×4 from stamp area).
@@ -155,6 +158,7 @@ export function simulateHeightmap(
 	moves: GCodeMove[],
 	config: SimulatorConfig,
 	onMove?: (entry: MoveLogEntry) => void,
+	existingData?: Float32Array,
 ): Heightmap {
 	const { stock, tool, cellSize } = config;
 	const cols = Math.ceil(stock.width / cellSize);
@@ -164,7 +168,7 @@ export function simulateHeightmap(
 
 	// Z=0 is the top surface of the stock (G-code convention).
 	// Cells are initialised to 0; cuts drive them negative.
-	const data = new Float32Array(cols * rows);
+	const data = existingData ?? new Float32Array(cols * rows);
 
 	for (let i = 0; i < moves.length; i++) {
 		const move = moves[i];

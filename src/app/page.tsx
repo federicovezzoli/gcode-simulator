@@ -8,7 +8,8 @@ export default function Home() {
 					G-code Simulator
 				</h1>
 				<p className="mt-1 text-xs text-zinc-500">
-					GLSL shader rendering — DataTexture, finite-difference normals, orbit controls.
+					GLSL shader rendering — DataTexture, finite-difference normals, orbit
+					controls.
 				</p>
 			</div>
 			<Simulator3D />

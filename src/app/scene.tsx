@@ -61,7 +61,6 @@ const fragmentShader = /* glsl */ `
 
 // ── Components ────────────────────────────────────────────────────────────────
 
-
 export interface SceneConfig {
 	stockWidth: number;
 	stockDepth: number;
@@ -102,10 +101,7 @@ function HeightmapMesh({
 				uniforms: {
 					uHeightmap: { value: texture },
 					uTexelSize: {
-						value: new THREE.Vector2(
-							1 / heightmap.cols,
-							1 / heightmap.rows,
-						),
+						value: new THREE.Vector2(1 / heightmap.cols, 1 / heightmap.rows),
 					},
 					uCellSize: { value: heightmap.cellSize },
 				},
