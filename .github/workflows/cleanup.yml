@@ -1,23 +1,32 @@
 name: Cleanup
-on: 
+
+on:
   pull_request:
     types: [closed]
-  
+
 jobs:
   delete-branch:
     runs-on: ubuntu-latest
     permissions:
-        contents: write #required
+      contents: write
     steps:
       - name: Delete branch
-        if: github.event.pull_request.merged == true #optional
+        if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v8
         with:
           script: |
-            github.rest.git.deleteRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `heads/${context.payload.pull_request.head.ref}`,
-            })
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${context.payload.pull_request.head.ref}`,
+              });
+            } catch (error) {
+              if (error.status === 404 || error.status === 403) {
+                core.info(`Skipping branch deletion: ${error.message}`);
+              } else {
+                throw error;
+              }
+            }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
