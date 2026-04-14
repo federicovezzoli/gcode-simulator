@@ -135,7 +135,9 @@ export function simulateHeightmap(
 	const radius = tool.diameter / 2;
 	const isBallNose = tool.type === "ball-nose";
 
-	const data = new Float32Array(cols * rows).fill(stock.height);
+	// Z=0 is the top surface of the stock (G-code convention).
+	// Cells are initialised to 0; cuts drive them negative.
+	const data = new Float32Array(cols * rows).fill(0);
 
 	for (let i = 0; i < moves.length; i++) {
 		const move = moves[i];
@@ -143,7 +145,7 @@ export function simulateHeightmap(
 			(move.to.x - move.from.x) ** 2 + (move.to.y - move.from.y) ** 2,
 		);
 		const skipped =
-			move.type === "rapid" || Math.min(move.from.z, move.to.z) >= stock.height;
+			move.type === "rapid" || Math.min(move.from.z, move.to.z) >= 0;
 
 		let samples = 0;
 		let cellsUpdated = 0;
