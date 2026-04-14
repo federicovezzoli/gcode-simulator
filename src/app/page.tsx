@@ -1,4 +1,4 @@
-import { Simulator } from "./simulator";
+import { Simulator3D } from "./simulator3d";
 
 export default function Home() {
 	return (
@@ -8,10 +8,10 @@ export default function Home() {
 					G-code Simulator
 				</h1>
 				<p className="mt-1 text-xs text-zinc-500">
-					Heightmap rendered as a flat colour grid — Canvas 2D, no libraries.
+					3D heightmap — React Three Fiber, orbit controls.
 				</p>
 			</div>
-			<Simulator />
+			<Simulator3D />
 		</main>
 	);
 }
