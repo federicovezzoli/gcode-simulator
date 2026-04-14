@@ -6,7 +6,6 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import type { Heightmap } from "@/lib/simulator/types";
 
-
 export interface SceneConfig {
 	stockWidth: number;
 	stockDepth: number;
@@ -120,11 +119,7 @@ export function Scene({ heightmap, config }: SceneProps) {
 			{heightmap && <HeightmapMesh heightmap={heightmap} config={config} />}
 			<StockBox config={config} />
 
-			<OrbitControls
-				makeDefault
-				enableZoom
-				target={[0, 0, -stockHeight / 4]}
-			/>
+			<OrbitControls makeDefault enableZoom target={[0, 0, -stockHeight / 4]} />
 		</Canvas>
 	);
 }

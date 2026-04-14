@@ -90,29 +90,20 @@ export function Simulator3D() {
 					<p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
 						Stock (mm)
 					</p>
-					<div className="space-y-4">
-						<SliderField
-							label={`Width (X): ${config.stockWidth}`}
+					<div className="space-y-3">
+						<NumberField
+							label="Width (X)"
 							value={config.stockWidth}
-							min={10}
-							max={300}
-							step={5}
 							onChange={(v) => setConfigKey("stockWidth", v)}
 						/>
-						<SliderField
-							label={`Depth (Y): ${config.stockDepth}`}
+						<NumberField
+							label="Depth (Y)"
 							value={config.stockDepth}
-							min={10}
-							max={300}
-							step={5}
 							onChange={(v) => setConfigKey("stockDepth", v)}
 						/>
-						<SliderField
-							label={`Height (Z): ${config.stockHeight}`}
+						<NumberField
+							label="Height (Z)"
 							value={config.stockHeight}
-							min={1}
-							max={100}
-							step={1}
 							onChange={(v) => setConfigKey("stockHeight", v)}
 						/>
 					</div>
@@ -200,6 +191,31 @@ export function Simulator3D() {
 					}
 				/>
 			</div>
+		</div>
+	);
+}
+
+function NumberField({
+	label,
+	value,
+	onChange,
+}: {
+	label: string;
+	value: number;
+	onChange: (v: number) => void;
+}) {
+	return (
+		<div className="flex items-center justify-between gap-3">
+			<Label className="text-xs text-zinc-400">{label}</Label>
+			<input
+				type="number"
+				value={value}
+				onChange={(e) => {
+					const v = Number(e.target.value);
+					if (Number.isFinite(v) && v > 0) onChange(v);
+				}}
+				className="w-20 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-right text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+			/>
 		</div>
 	);
 }
