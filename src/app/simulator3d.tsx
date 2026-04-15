@@ -44,6 +44,7 @@ const DEFAULTS: Config = {
 const DEFAULT_TOOL: ToolConfig = { diameter: 6, type: "flat" };
 
 interface SectionTool {
+	id: string;
 	section: GCodeSection;
 	tool: ToolConfig;
 }
@@ -65,6 +66,7 @@ export function Simulator3D() {
 		const sections = splitGCodeSections(gcode);
 		setSectionTools((prev) =>
 			sections.map((section, i) => ({
+				id: prev[i]?.id ?? crypto.randomUUID(),
 				section,
 				tool: prev[i]?.tool ?? DEFAULT_TOOL,
 			})),
@@ -164,7 +166,7 @@ export function Simulator3D() {
 						<div className="space-y-4">
 							{sectionTools.map((st, i) => (
 								<ToolSection
-									key={st.section.label}
+									key={st.id}
 									label={st.section.label}
 									tool={st.tool}
 									onChange={(tool) => setSectionTool(i, tool)}
@@ -234,7 +236,7 @@ export function Simulator3D() {
 				</div>
 
 				<div className="flex flex-col gap-3 border-t border-zinc-800 p-5">
-					<Button onClick={run} className="w-full">
+					<Button onClick={run} className="w-full bg-green-600">
 						Run simulation
 					</Button>
 					{error && (
