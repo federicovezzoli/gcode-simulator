@@ -191,7 +191,8 @@ export function parseGCode(source: string): GCodeMove[] {
  * labelled "Tool 1".
  *
  * Section labels are taken from the first `(No. N ...)` or `(MSG ...)` comment
- * in the section; otherwise a sequential fallback is used.
+ * in the section. Generic Estlcam probe/tool-change messages ("attach probe",
+ * "change tool, probe") are ignored and fall back to "Tool N".
  */
 export function splitGCodeSections(source: string): GCodeSection[] {
 	const lines = source.split("\n");
@@ -214,6 +215,10 @@ export function splitGCodeSections(source: string): GCodeSection[] {
 	const starts = [0, ...breakpoints];
 	const ends = [...breakpoints, lines.length];
 
+	// Labels matching these Estlcam-generated probe/change messages carry no
+	// useful info — fall back to the sequential "Tool N" name.
+	const GENERIC_LABEL = /attach\s*probe|change\s*tool/i;
+
 	return starts.map((start, idx) => {
 		const sectionLines = lines.slice(start, ends[idx]);
 
@@ -221,7 +226,8 @@ export function splitGCodeSections(source: string): GCodeSection[] {
 		for (const l of sectionLines) {
 			const m = l.match(/\(No\.\s*\d+[^)]*\)/i) ?? l.match(/\(MSG[^)]*\)/i);
 			if (m) {
-				label = m[0].replace(/^\(|\)$/g, "").trim();
+				const candidate = m[0].replace(/^\(|\)$/g, "").trim();
+				if (!GENERIC_LABEL.test(candidate)) label = candidate;
 				break;
 			}
 		}
