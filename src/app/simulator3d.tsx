@@ -236,7 +236,7 @@ export function Simulator3D() {
 				</div>
 
 				<div className="flex flex-col gap-3 border-t border-zinc-800 p-5">
-					<Button onClick={run} className="w-full">
+					<Button onClick={run} className="w-full bg-green-600">
 						Run simulation
 					</Button>
 					{error && (
