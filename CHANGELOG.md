@@ -1,3 +1,18 @@
+# [1.1.0](https://github.com/federicovezzoli/gcode-simulator/compare/v1.0.0...v1.1.0) (2026-04-15)
+
+
+### Bug Fixes
+
+* adjust main container height for better layout in Home component ([0247cd8](https://github.com/federicovezzoli/gcode-simulator/commit/0247cd8face742d35ebeb5f30a56f507dc8822ae))
+* improve section label handling in G-code parsing to ignore generic Estlcam messages ([c436ba7](https://github.com/federicovezzoli/gcode-simulator/commit/c436ba7f52d2ecb4633054cc2b228b4f9fc5b53c))
+* refactor theme initialization script and improve layout structure in RootLayout component ([499e56c](https://github.com/federicovezzoli/gcode-simulator/commit/499e56c51430668c3bb0b7aca029c5574948dec2))
+
+
+### Features
+
+* add theme toggle component and update layout for improved user experience ([5705e30](https://github.com/federicovezzoli/gcode-simulator/commit/5705e30c4d303c0b8b20aef5d78246e37bc26820))
+* add unique IDs to section tools for better tracking in Simulator3D ([7bda217](https://github.com/federicovezzoli/gcode-simulator/commit/7bda217f677764c542684c601405cf4f6efe3c8b))
+
 # 1.0.0 (2026-04-14)
 
 
