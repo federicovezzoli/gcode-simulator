@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
@@ -29,44 +30,42 @@ export default function RootLayout({
 			lang="en"
 			className={`${geistSans.variable} ${geistMono.variable} h-screen overflow-hidden antialiased`}
 		>
-			<head>
-				{/* biome-ignore lint: anti-flash theme script */}
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(t===null&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
-					}}
-				/>
-			</head>
+			<Script id="theme-init" strategy="beforeInteractive">{`
+				try {
+					var t = localStorage.getItem("theme");
+					if (t === "dark" || (t === null && matchMedia("(prefers-color-scheme: dark)").matches))
+						document.documentElement.classList.add("dark");
+				} catch (_) {}
+			`}</Script>
 			<body className="min-h-full flex flex-col">
 				<header className="border-b border-zinc-800 px-6 py-4">
 					<div className="w-full flex justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground">
-						
 						<div>
 							<h1 className="font-mono text-sm font-medium text-zinc-100">
-							G-code Simulator
-						</h1>
-						<p className="mt-1 text-xs text-zinc-500">
-							GLSL shader rendering — DataTexture, finite-difference normals,
-							orbit controls.
-						</p>
+								G-code Simulator
+							</h1>
+							<p className="mt-1 text-xs text-zinc-500">
+								GLSL shader rendering — DataTexture, finite-difference normals,
+								orbit controls.
+							</p>
 						</div>
 
-					<div className="flex justify-end items-center gap-x-4 text-right">
-						<span>
-							Made by{" "}
-							<a
-								href="https://federicovezzoli.com"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="underline underline-offset-2 hover:text-foreground transition-colors"
-							>
-								Federico Vezzoli
-							</a>
-						</span>
-						<span>·</span>
-						<span>v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
+						<div className="flex justify-end items-center gap-x-4 text-right">
+							<span>
+								Made by{" "}
+								<a
+									href="https://federicovezzoli.com"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="underline underline-offset-2 hover:text-foreground transition-colors"
+								>
+									Federico Vezzoli
+								</a>
+							</span>
+							<span>·</span>
+							<span>v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
 
-						<ThemeToggle />
+							<ThemeToggle />
 						</div>
 					</div>
 				</header>
