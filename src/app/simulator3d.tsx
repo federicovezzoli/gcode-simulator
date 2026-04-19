@@ -38,7 +38,7 @@ const DEFAULTS: Config = {
 	stockWidth: 100,
 	stockDepth: 100,
 	stockHeight: 20,
-	cellSize: 0.25,
+	cellSize: 0.125,
 };
 
 const DEFAULT_TOOL: ToolConfig = { diameter: 6, type: "flat" };
@@ -184,9 +184,9 @@ export function Simulator3D() {
 						<SliderField
 							label={`Cell size: ${config.cellSize} mm`}
 							value={config.cellSize}
-							min={0.25}
+							min={0.1}
 							max={5}
-							step={0.25}
+							step={0.05}
 							onChange={(v) => setConfigKey("cellSize", v)}
 						/>
 						<p className="mt-2 text-xs text-zinc-600">
