@@ -50,39 +50,26 @@ function stampTool(
 			const dy = wy - cy;
 			const d = Math.sqrt(dx * dx + dy * dy);
 
-			// Fast path: fully inside or outside — no supersampling needed.
-			let coverage: number;
-			if (d <= radius - cellSize) {
-				coverage = 1;
-			} else if (d >= radius + cellSize) {
-				continue;
-			} else {
-				// Boundary cell: supersample a 4×4 grid to compute the true fraction
-				// of the cell area that lies inside the tool circle.
-				// Uses d² comparisons only — no sqrt per subsample.
-				const N = 4;
-				let hits = 0;
-				for (let si = 0; si < N; si++) {
-					for (let sj = 0; sj < N; sj++) {
-						const sx = (col + (si + 0.5) / N) * cellSize - cx;
-						const sy = (row + (sj + 0.5) / N) * cellSize - cy;
-						if (sx * sx + sy * sy <= r2) hits++;
-					}
-				}
-				coverage = hits / (N * N);
-				if (coverage <= 0) continue;
-			}
+			// Binary cell-center test: the cell is "cut" iff its centre lies
+			// inside the tool disc. No coverage-based Z blending — that was the
+			// source of rim/halo artefacts on curved paths, because adjacent
+			// boundary cells ended up at different Z values based on sub-grid
+			// geometry of where the continuous rim curve passed through them,
+			// and the shader's finite-difference normal amplified that noise
+			// into visible sawtooth shading.
+			// Trade-off: the outline of cuts is now quantised to the cell grid
+			// (stair-stepping at low resolution is honest; it reflects the
+			// actual heightmap resolution).
+			if (d > radius) continue;
 
-			const dClamped = Math.min(d, radius);
+			const dClamped = d;
 			const fullCutZ = isBallNose
 				? toolZ + radius - Math.sqrt(r2 - dClamped * dClamped)
 				: toolZ;
 
-			const cutZ = fullCutZ * coverage;
-
 			const idx = row * cols + col;
-			if (cutZ < data[idx]) {
-				data[idx] = cutZ;
+			if (fullCutZ < data[idx]) {
+				data[idx] = fullCutZ;
 				updated++;
 			}
 		}
@@ -92,12 +79,25 @@ function stampTool(
 }
 
 /**
- * Walks a linear path from (x0,y0,z0) to (x1,y1,z1) stamping the tool at
- * each sample point (step ≤ cellSize/2 so no cell is skipped).
+ * Analytically carves the swept region of a linear move into the heightmap.
  *
- * Returns { samples, cellsUpdated }.
+ * The Minkowski sum of a line segment with a disc of radius r is a capsule:
+ * a rectangle of width 2r perpendicular to the segment, plus two hemispherical
+ * caps at the endpoints. For every cell whose centre lies inside this capsule,
+ * we compute the tool's closest approach to that cell and write the depth.
  *
- * Complexity: O(pathLength / cellSize × (radius/cellSize)²)
+ * This replaces the previous discrete-stamp approach. Discrete stamps at step
+ * cellSize/2 missed rim cells whose centres lay near the tool boundary without
+ * an aligned stamp, producing sampling-dependent dropouts that were amplified
+ * by the shader's finite-difference normal into periodic teeth on arcs.
+ *
+ * Z at the closest-approach point is interpolated linearly along the segment.
+ *
+ * Returns { samples, cellsUpdated }. `samples` is retained for logging compat —
+ * no longer a true sample count; we now report 1 per segment.
+ *
+ * Complexity: O(capsuleBoundingCells) per segment, independent of segment length
+ * sampling.
  */
 function stampPath(
 	data: Float32Array,
@@ -116,27 +116,77 @@ function stampPath(
 	const dx = x1 - x0;
 	const dy = y1 - y0;
 	const dz = z1 - z0;
-	const xyDist = Math.sqrt(dx * dx + dy * dy);
+	const xyLen2 = dx * dx + dy * dy;
+	const r2 = radius * radius;
 
-	const steps = Math.max(1, Math.ceil(xyDist / (cellSize * 0.5)));
-	let cellsUpdated = 0;
-
-	for (let i = 0; i <= steps; i++) {
-		const t = i / steps;
-		cellsUpdated += stampTool(
+	// Degenerate segment → single stamp at the start position.
+	if (xyLen2 < 1e-12) {
+		const updated = stampTool(
 			data,
 			cols,
 			rows,
 			cellSize,
-			x0 + dx * t,
-			y0 + dy * t,
-			z0 + dz * t,
+			x0,
+			y0,
+			z0,
 			radius,
 			isBallNose,
 		);
+		return { samples: 1, cellsUpdated: updated };
 	}
 
-	return { samples: steps + 1, cellsUpdated };
+	const invXyLen2 = 1 / xyLen2;
+
+	// Axis-aligned bounding box of the capsule (XY), in mm.
+	const minX = Math.min(x0, x1) - radius;
+	const maxX = Math.max(x0, x1) + radius;
+	const minY = Math.min(y0, y1) - radius;
+	const maxY = Math.max(y0, y1) + radius;
+
+	// Expand by one cell so we cover boundary cells whose centres might still
+	// test inside the capsule.
+	const col0 = Math.max(0, Math.floor(minX / cellSize) - 1);
+	const col1 = Math.min(cols - 1, Math.ceil(maxX / cellSize) + 1);
+	const row0 = Math.max(0, Math.floor(minY / cellSize) - 1);
+	const row1 = Math.min(rows - 1, Math.ceil(maxY / cellSize) + 1);
+
+	let cellsUpdated = 0;
+
+	for (let row = row0; row <= row1; row++) {
+		const wy = (row + 0.5) * cellSize;
+		for (let col = col0; col <= col1; col++) {
+			const wx = (col + 0.5) * cellSize;
+
+			// Project cell centre onto the segment and clamp to [0,1].
+			let t = ((wx - x0) * dx + (wy - y0) * dy) * invXyLen2;
+			if (t < 0) t = 0;
+			else if (t > 1) t = 1;
+
+			const px = x0 + dx * t;
+			const py = y0 + dy * t;
+			const ex = wx - px;
+			const ey = wy - py;
+			const d2 = ex * ex + ey * ey;
+
+			// Binary cell-centre test: is cell centre inside the capsule?
+			if (d2 > r2) continue;
+
+			// Z at the closest-approach point, linearly interpolated along the
+			// segment. Matches the original per-stamp interpolation exactly at
+			// the sample points, but with no sampling dropouts between them.
+			const toolZ = z0 + dz * t;
+
+			const fullCutZ = isBallNose ? toolZ + radius - Math.sqrt(r2 - d2) : toolZ;
+
+			const idx = row * cols + col;
+			if (fullCutZ < data[idx]) {
+				data[idx] = fullCutZ;
+				cellsUpdated++;
+			}
+		}
+	}
+
+	return { samples: 1, cellsUpdated };
 }
 
 /**

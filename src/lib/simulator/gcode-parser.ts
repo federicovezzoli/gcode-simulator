@@ -33,7 +33,12 @@ function arcToMoves(
 	i: number,
 	j: number,
 	clockwise: boolean,
-	chordTol = 0.02,
+	// Kept well below a typical cell size so that the polyline deviation from
+	// the true arc is sub-cell. At 0.02 mm the swept rim undulated by ~0.02 mm
+	// between chord endpoints and midpoints, which at cellSize ≥ ~0.1 mm
+	// produced a one-cell angular on/off ring (visible as periodic teeth on
+	// rounded corners).
+	chordTol = 0.002,
 ): GCodeMove[] {
 	const cx = from.x + i;
 	const cy = from.y + j;
