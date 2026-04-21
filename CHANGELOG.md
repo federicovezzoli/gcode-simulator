@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/federicovezzoli/gcode-simulator/compare/v1.1.0...v1.1.1) (2026-04-21)
+
+
+### Bug Fixes
+
+* **scene:** 5×5 Gaussian Sobel normals; widen cell-size range; add notes ([76bce4b](https://github.com/federicovezzoli/gcode-simulator/commit/76bce4b7dc07aa3144662ef402faac6d21f03a44))
+* **simulator:** carve moves as analytical capsule sweeps ([eb10f25](https://github.com/federicovezzoli/gcode-simulator/commit/eb10f25109d79e805b72b06f99cb5d02a0f0b382))
+
 # [1.1.0](https://github.com/federicovezzoli/gcode-simulator/compare/v1.0.0...v1.1.0) (2026-04-15)
 
 
