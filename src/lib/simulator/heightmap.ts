@@ -176,9 +176,7 @@ function stampPath(
 			// the sample points, but with no sampling dropouts between them.
 			const toolZ = z0 + dz * t;
 
-			const fullCutZ = isBallNose
-				? toolZ + radius - Math.sqrt(r2 - d2)
-				: toolZ;
+			const fullCutZ = isBallNose ? toolZ + radius - Math.sqrt(r2 - d2) : toolZ;
 
 			const idx = row * cols + col;
 			if (fullCutZ < data[idx]) {
