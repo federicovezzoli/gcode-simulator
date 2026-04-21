@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/federicovezzoli/gcode-simulator/compare/v1.1.1...v1.1.2) (2026-04-21)
+
+
+### Bug Fixes
+
+* **config:** remove basePath from next.config.ts ([b9692ea](https://github.com/federicovezzoli/gcode-simulator/commit/b9692ea12dcc3654fef7c908c5f2aae6f9c874e0))
+
 ## [1.1.1](https://github.com/federicovezzoli/gcode-simulator/compare/v1.1.0...v1.1.1) (2026-04-21)
 
 
