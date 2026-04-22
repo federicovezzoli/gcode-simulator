@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
@@ -32,6 +33,11 @@ export default function RootLayout({
 		>
 			<head>
 				<script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem("theme");if(t==="dark"||(t===null&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(_){}` }} />
+				<Script
+					data-goatcounter="https://federicovezzoli.goatcounter.com/count"
+					src="//gc.zgo.at/count.js"
+					strategy="afterInteractive"
+				/>
 			</head>
 			<body className="min-h-full flex flex-col">
 				<header className="border-b border-zinc-800 px-6 py-4">
